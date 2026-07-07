@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>วิ่งสะสมแต้ม</title>
+<style>
+  :root{
+    --track:#FF5A1F;
+    --track-dark:#E14A12;
+    --ink:#1F2428;
+    --paper:#F7F4EE;
+    --paper-line:#E3DED3;
+    --turf:#2F7D4F;
+    --turf-light:#E6F3EA;
+    --gray:#8A8578;
+    --white:#FFFFFF;
+    --danger:#C23B3B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--paper);position:relative;}
+
+  /* perforated bib texture strip */
+  .bib-top{
+    background:var(--white);
+    border-bottom:2px dashed var(--paper-line);
+    padding:18px 20px 14px;
+    position:relative;
+  }
+  .bib-top::after{
+    content:"";
+    position:absolute;left:0;right:0;bottom:-6px;height:12px;
+    background-image: radial-gradient(circle, var(--paper) 3px, transparent 3.5px);
+    background-size: 16px 16px;
+    background-position: 8px 0;
+  }
+  .brand{display:flex;align-items:baseline;justify-content:space-between;}
+  .brand h1{
+    font-size:15px;letter-spacing:2px;text-transform:uppercase;font-weight:800;margin:0;color:var(--ink);
+  }
+  .brand .who{font-size:12px;color:var(--gray);}
+  .brand .who b{color:var(--ink);}
+
+  .bib-number{
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    padding:22px 0 10px;
+  }
+  .bib-number .num{
+    font-size:64px;font-weight:900;letter-spacing:-1px;line-height:1;
+    font-variant-numeric:tabular-nums;color:var(--ink);
+  }
+  .bib-number .num span{color:var(--track);}
+  .bib-number .label{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gray);margin-top:6px;font-weight:700;}
+
+  nav.tabs{
+    display:flex;background:var(--white);border-top:1px solid var(--paper-line);
+    position:sticky;bottom:0;z-index:5;
+  }
+  nav.tabs button{
+    flex:1;padding:12px 4px 10px;background:none;border:none;font-size:11px;font-weight:700;
+    color:var(--gray);letter-spacing:0.5px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  }
+  nav.tabs button .ic{font-size:18px;}
+  nav.tabs button.active{color:var(--track);}
+  nav.tabs button.active .ic{filter:none;}
+
+  main{flex:1;padding:18px 20px 24px;overflow-y:auto;}
+
+  h2.section-title{
+    font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);
+    font-weight:800;margin:0 0 12px;
+  }
+
+  /* Track tab */
+  .track-card{
+    background:var(--white);border:1px solid var(--paper-line);border-radius:16px;padding:20px;text-align:center;
+  }
+  .stat-big{font-size:52px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ink);line-height:1;}
+  .stat-unit{font-size:14px;color:var(--gray);font-weight:700;margin-top:4px;letter-spacing:1px;}
+  .stat-row{display:flex;justify-content:center;gap:28px;margin-top:16px;}
+  .stat-row .item{text-align:center;}
+  .stat-row .item .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .stat-row .item .l{font-size:10px;color:var(--gray);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+
+  .go-btn{
+    width:100%;margin-top:20px;padding:18px;border-radius:14px;border:none;
+    font-size:16px;font-weight:800;letter-spacing:1px;color:var(--white);
+    background:var(--track);cursor:pointer;
+  }
+  .go-btn.stop{background:var(--danger);}
+  .go-btn:disabled{background:var(--gray);}
+
+  .gps-badge{
+    display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--gray);
+    margin-top:10px;font-weight:700;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--gray);}
+  .dot.live{background:var(--turf);box-shadow:0 0 0 3px var(--turf-light);}
+
+  canvas#trail{width:100%;height:140px;margin-top:14px;border-radius:12px;background:var(--paper);border:1px solid var(--paper-line);}
+
+  .hint{font-size:12px;color:var(--gray);margin-top:14px;line-height:1.5;}
+  .hint b{color:var(--ink);}
+
+  /* History */
+  .run-item{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--white);border:1px solid var(--paper-line);border-radius:12px;
+    padding:14px 16px;margin-bottom:10px;
+  }
+  .run-item .d{font-size:11px;color:var(--gray);font-weight:700;}
+  .run-item .km{font-size:20px;font-weight:900;margin-top:2px;}
+  .run-item .pts{font-size:13px;font-weight:800;color:var(--track);text-align:right;}
+  .empty{color:var(--gray);font-size:13px;text-align:center;padding:40px 10px;line-height:1.6;}
+
+  /* Rewards */
+  .points-banner{
+    background:var(--ink);color:var(--white);border-radius:14px;padding:16px 18px;
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;
+  }
+  .points-banner .p{font-size:26px;font-weight:900;}
+  .points-banner .l{font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:0.7;margin-top:2px;}
+  .reward-card{
+    background:var(--white);border:1px solid var(--paper-line);border-radius:14px;padding:16px;margin-bottom:12px;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+  }
+  .reward-card .name{font-weight:800;font-size:14px;}
+  .reward-card .cost{font-size:12px;color:var(--gray);margin-top:3px;font-weight:700;}
+  .redeem-btn{
+    background:var(--turf);color:var(--white);border:none;border-radius:10px;
+    padding:10px 14px;font-size:12px;font-weight:800;white-space:nowrap;
+  }
+  .redeem-btn:disabled{background:var(--paper-line);color:var(--gray);}
+  .toast{
+    position:fixed;left:50%;bottom:90px;transform:translateX(-50%);
+    background:var(--ink);color:var(--white);padding:10px 18px;border-radius:20px;
+    font-size:13px;font-weight:700;z-index:20;max-width:90%;text-align:center;
+  }
+
+  /* Leaderboard */
+  .lb-row{
+    display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--paper-line);
+    border-radius:12px;padding:12px 14px;margin-bottom:8px;
+  }
+  .lb-row .rank{font-size:16px;font-weight:900;width:22px;color:var(--gray);}
+  .lb-row.me{border-color:var(--track);background:#FFF4EE;}
+  .lb-row .nm{flex:1;font-weight:700;font-size:14px;}
+  .lb-row .kmv{font-weight:900;font-size:14px;}
+
+  .admin-toggle{font-size:11px;color:var(--gray);text-align:center;margin-top:24px;text-decoration:underline;cursor:pointer;}
+  .admin-box{background:var(--white);border:1px solid var(--paper-line);border-radius:12px;padding:14px;margin-top:14px;}
+  .admin-box input{width:100%;padding:10px;border:1px solid var(--paper-line);border-radius:8px;margin-bottom:8px;font-size:13px;}
+  .admin-box button{width:100%;padding:10px;border:none;border-radius:8px;background:var(--ink);color:white;font-weight:700;font-size:13px;}
+
+  /* Login */
+  .login-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:32px 28px;}
+  .login-wrap h1{font-size:22px;font-weight:900;margin:0 0 4px;}
+  .login-wrap p{color:var(--gray);font-size:13px;margin:0 0 24px;line-height:1.6;}
+  .login-wrap input{
+    width:100%;padding:14px;border:2px solid var(--ink);border-radius:12px;font-size:15px;margin-bottom:12px;
+  }
+  .login-wrap button{
+    width:100%;padding:15px;border:none;border-radius:12px;background:var(--track);color:white;
+    font-weight:800;font-size:15px;letter-spacing:0.5px;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const KM_PER_POINT_RATE = 10; // แต้มต่อ 1 กิโลเมตร
+const MAX_ACCEPTABLE_ACCURACY = 40; // เมตร, กรอง GPS ที่แม่นยำต่ำ
+const MAX_REALISTIC_SPEED = 6; // m/s (~21.6 km/h) กันจุดกระโดด
+
+let state = {
+  screen: 'loading',
+  employeeId: null,
+  employeeName: null,
+  profile: null,
+  runs: [],
+  rewards: [],
+  tracking: false,
+  watchId: null,
+  path: [],
+  distanceM: 0,
+  startTime: null,
+  timerInterval: null,
+  elapsedSec: 0,
+  toast: null,
+  adminOpen: false,
+  adminUnlocked: false,
+};
+
+function el(tag, attrs, children){
+  const e = document.createElement(tag);
+  if(attrs) for(const k in attrs){
+    if(k === 'class') e.className = attrs[k];
+    else if(k.startsWith('on')) e.addEventListener(k.substring(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  (children||[]).forEach(c=>{
+    if(typeof c === 'string') e.appendChild(document.createTextNode(c));
+    else if(c) e.appendChild(c);
+  });
+  return e;
+}
+
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = d => d * Math.PI/180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R*c;
+}
+
+function slugify(name){
+  return 'emp_' + name.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9ก-๙_]/g,'') + '_' + Math.random().toString(36).slice(2,6);
+}
+
+async function loadMe(){
+  try{
+    const r = await window.storage.get('me', false);
+    if(r && r.value){
+      const me = JSON.parse(r.value);
+      state.employeeId = me.employeeId;
+      state.employeeName = me.name;
+    }
+  }catch(e){}
+}
+
+async function saveMe(){
+  try{
+    await window.storage.set('me', JSON.stringify({employeeId: state.employeeId, name: state.employeeName}), false);
+  }catch(e){ console.error('saveMe failed', e); }
+}
+
+async function loadProfile(){
+  try{
+    const r = await window.storage.get('profile:' + state.employeeId, true);
+    state.profile = r && r.value ? JSON.parse(r.value) : {name: state.employeeName, totalKm: 0, totalPoints: 0, pointsSpent: 0, redemptions: []};
+  }catch(e){
+    state.profile = {name: state.employeeName, totalKm: 0, totalPoints: 0, pointsSpent: 0, redemptions: []};
+  }
+}
+
+async function saveProfile(){
+  try{
+    await window.storage.set('profile:' + state.employeeId, JSON.stringify(state.profile), true);
+  }catch(e){ console.error('saveProfile failed', e); }
+}
+
+async function loadRuns(){
+  try{
+    const r = await window.storage.get('runs:' + state.employeeId, true);
+    state.runs = r && r.value ? JSON.parse(r.value) : [];
+  }catch(e){ state.runs = []; }
+}
+
+async function saveRuns(){
+  try{
+    await window.storage.set('runs:' + state.employeeId, JSON.stringify(state.runs), true);
+  }catch(e){ console.error('saveRuns failed', e); }
+}
+
+async function loadRewards(){
+  try{
+    const r = await window.storage.get('rewards-catalog', true);
+    if(r && r.value){ state.rewards = JSON.parse(r.value); return; }
+  }catch(e){}
+  state.rewards = [
+    {id:'r1', name:'น้ำดื่ม 1 ขวด', points: 30},
+    {id:'r2', name:'คูปองกาแฟ', points: 80},
+    {id:'r3', name:'เสื้อวิ่งบริษัท', points: 400},
+    {id:'r4', name:'วันลาพิเศษ 1 วัน', points: 1000},
+  ];
+  try{
+    await window.storage.set('rewards-catalog', JSON.stringify(state.rewards), true);
+  }catch(e){ console.error('loadRewards default save failed', e); }
+}
+
+async function saveRewards(){
+  try{
+    await window.storage.set('rewards-catalog', JSON.stringify(state.rewards), true);
+  }catch(e){ console.error('saveRewards failed', e); }
+}
+
+async function loadLeaderboard(){
+  try{
+    const list = await window.storage.list('profile:', true);
+    if(!list || !list.keys) return [];
+    const results = [];
+    for(const k of list.keys){
+      try{
+        const r = await window.storage.get(k, true);
+        if(r && r.value) results.push({id: k.replace('profile:',''), ...JSON.parse(r.value)});
+      }catch(e){}
+    }
+    return results.sort((a,b)=> (b.totalKm||0) - (a.totalKm||0));
+  }catch(e){ return []; }
+}
+
+function showToast(msg){
+  state.toast = msg;
+  render();
+  setTimeout(()=>{ state.toast = null; render(); }, 2200);
+}
+
+// ---- GPS Tracking ----
+function startTracking(){
+  if(!navigator.geolocation){
+    showToast('อุปกรณ์นี้ไม่รองรับ GPS');
+    return;
+  }
+  state.tracking = true;
+  state.path = [];
+  state.distanceM = 0;
+  state.elapsedSec = 0;
+  state.startTime = Date.now();
+  render();
+
+  state.timerInterval = setInterval(()=>{
+    state.elapsedSec = Math.floor((Date.now() - state.startTime)/1000);
+    render(true);
+  }, 1000);
+
+  state.watchId = navigator.geolocation.watchPosition(pos=>{
+    const {latitude, longitude, accuracy, speed} = pos.coords;
+    if(accuracy && accuracy > MAX_ACCEPTABLE_ACCURACY) return; // กรองสัญญาณอ่อน
+    const point = {lat: latitude, lng: longitude, t: pos.timestamp};
+    if(state.path.length > 0){
+      const last = state.path[state.path.length-1];
+      const d = haversine(last.lat, last.lng, point.lat, point.lng);
+      const dt = (point.t - last.t)/1000;
+      const impliedSpeed = dt > 0 ? d/dt : 0;
+      if(impliedSpeed <= MAX_REALISTIC_SPEED){
+        state.distanceM += d;
+      }
+    }
+    state.path.push(point);
+    render(true);
+  }, err=>{
+    showToast(err.code === 1 ? 'กรุณาอนุญาตให้เข้าถึงตำแหน่ง GPS' : 'สัญญาณ GPS มีปัญหา');
+  }, {enableHighAccuracy:true, maximumAge:1000, timeout:15000});
+}
+
+async function stopTracking(){
+  state.tracking = false;
+  if(state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
+  if(state.timerInterval) clearInterval(state.timerInterval);
+
+  const km = state.distanceM / 1000;
+  if(km >= 0.1){
+    const points = Math.round(km * KM_PER_POINT_RATE);
+    const run = {
+      id: 'run_' + Date.now(),
+      date: new Date().toISOString(),
+      km: Math.round(km*100)/100,
+      durationSec: state.elapsedSec,
+      points,
+      path: state.path.filter((_,i)=> i % 3 === 0), // เก็บแบบย่อ
+    };
+    state.runs.unshift(run);
+    state.profile.totalKm = Math.round(((state.profile.totalKm||0) + km)*100)/100;
+    state.profile.totalPoints = (state.profile.totalPoints||0) + points;
+    try{
+      await saveRuns();
+      await saveProfile();
+      showToast(`บันทึกแล้ว +${points} แต้ม (${run.km} กม.)`);
+    }catch(e){
+      console.error('save run failed', e);
+      showToast(`บันทึกในเครื่องแล้ว +${points} แต้ม (อาจไม่ซิงก์กับอันดับรวม)`);
+    }
+  }else{
+    showToast('ระยะทางสั้นเกินไป ไม่ได้บันทึก');
+  }
+  state.path = [];
+  state.distanceM = 0;
+  state.elapsedSec = 0;
+  render();
+}
+
+function fmtDuration(sec){
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function pace(km, sec){
+  if(km <= 0) return '--:--';
+  const paceSec = sec/km;
+  const m = Math.floor(paceSec/60), s = Math.round(paceSec%60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function drawTrail(){
+  const canvas = document.getElementById('trail');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.clientWidth * 2;
+  canvas.height = canvas.clientHeight * 2;
+  ctx.scale(2,2);
+  ctx.clearRect(0,0,canvas.clientWidth, canvas.clientHeight);
+  if(state.path.length < 2) return;
+  const lats = state.path.map(p=>p.lat), lngs = state.path.map(p=>p.lng);
+  const minLat=Math.min(...lats), maxLat=Math.max(...lats);
+  const minLng=Math.min(...lngs), maxLng=Math.max(...lngs);
+  const pad = 12;
+  const w = canvas.clientWidth - pad*2, h = canvas.clientHeight - pad*2;
+  const spanLat = (maxLat-minLat) || 0.0001;
+  const spanLng = (maxLng-minLng) || 0.0001;
+  ctx.beginPath();
+  ctx.strokeStyle = '#FF5A1F';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  state.path.forEach((p,i)=>{
+    const x = pad + ((p.lng-minLng)/spanLng)*w;
+    const y = pad + h - ((p.lat-minLat)/spanLat)*h;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+// ---- Screens ----
+function screenLogin(){
+  const wrap = el('div', {class:'login-wrap'});
+  wrap.appendChild(el('h1',{},['วิ่งสะสมแต้ม']));
+  wrap.appendChild(el('p',{},['กรอกชื่อพนักงานเพื่อเริ่มบันทึกการวิ่งด้วย GPS จริง สะสมแต้มจากระยะทาง แลกของรางวัลได้เมื่อครบตามเป้า']));
+  const input = el('input',{placeholder:'ชื่อ-นามสกุล หรือรหัสพนักงาน'});
+  wrap.appendChild(input);
+  wrap.appendChild(el('button',{onclick: async ()=>{
+    const name = input.value.trim();
+    if(!name){ showToast('กรุณากรอกชื่อ'); return; }
+    state.employeeName = name;
+    state.employeeId = slugify(name);
+    try{
+      await saveMe();
+      await loadProfile();
+      await loadRuns();
+      await loadRewards();
+    }catch(e){
+      console.error('login flow error', e);
+      if(!state.profile) state.profile = {name: state.employeeName, totalKm: 0, totalPoints: 0, pointsSpent: 0, redemptions: []};
+      if(!state.runs) state.runs = [];
+      if(!state.rewards || state.rewards.length === 0) state.rewards = [
+        {id:'r1', name:'น้ำดื่ม 1 ขวด', points: 30},
+        {id:'r2', name:'คูปองกาแฟ', points: 80},
+        {id:'r3', name:'เสื้อวิ่งบริษัท', points: 400},
+        {id:'r4', name:'วันลาพิเศษ 1 วัน', points: 1000},
+      ];
+    }
+    state.screen = 'track';
+    render();
+  }},['เริ่มใช้งาน']));
+  return wrap;
+}
+
+function screenTrack(){
+  const c = el('div',{});
+  c.appendChild(el('h2',{class:'section-title'},['บันทึกการวิ่ง']));
+  const card = el('div',{class:'track-card'});
+  const km = state.distanceM/1000;
+  card.appendChild(el('div',{class:'stat-big'},[km.toFixed(2)]));
+  card.appendChild(el('div',{class:'stat-unit'},['กิโลเมตร']));
+
+  const row = el('div',{class:'stat-row'});
+  row.appendChild(el('div',{class:'item'},[el('div',{class:'v'},[fmtDuration(state.elapsedSec)]), el('div',{class:'l'},['เวลา'])]));
+  row.appendChild(el('div',{class:'item'},[el('div',{class:'v'},[pace(km, state.elapsedSec)+' /กม.']), el('div',{class:'l'},['เพซ'])]));
+  row.appendChild(el('div',{class:'item'},[el('div',{class:'v'},[Math.round(km*KM_PER_POINT_RATE)+'']), el('div',{class:'l'},['แต้ม'])]));
+  card.appendChild(row);
+
+  card.appendChild(el('canvas',{id:'trail'}));
+
+  const btn = el('button',{class:'go-btn' + (state.tracking?' stop':''), onclick: ()=>{
+    if(state.tracking) stopTracking(); else startTracking();
+  }},[state.tracking ? '⏹ หยุดและบันทึก' : '▶ เริ่มวิ่ง']);
+  card.appendChild(btn);
+
+  const badge = el('div',{class:'gps-badge'},[
+    el('span',{class:'dot' + (state.tracking?' live':'')}),
+    state.tracking ? 'กำลังติดตามตำแหน่งจริงผ่าน GPS' : 'พร้อมเริ่มติดตาม GPS'
+  ]);
+  card.appendChild(badge);
+  c.appendChild(card);
+
+  c.appendChild(el('div',{class:'hint'},[
+    'ระบบนี้ใช้ GPS ของเบราว์เซอร์ในการวัดระยะทางจริง กรุณาอนุญาตการเข้าถึงตำแหน่ง และเปิดหน้าจอไว้ระหว่างวิ่ง (แนะนำให้เพิ่มหน้านี้ลงหน้าจอโฮมเพื่อใช้งานสะดวกขึ้น) — ',
+    el('b',{},[`1 กม. = ${KM_PER_POINT_RATE} แต้ม`])
+  ]));
+
+  return c;
+}
+
+function screenHistory(){
+  const c = el('div',{});
+  c.appendChild(el('h2',{class:'section-title'},['ประวัติการวิ่ง']));
+  if(state.runs.length === 0){
+    c.appendChild(el('div',{class:'empty'},['ยังไม่มีประวัติการวิ่ง เริ่มวิ่งครั้งแรกได้ที่แท็บ "วิ่ง"']));
+    return c;
+  }
+  state.runs.forEach(run=>{
+    const item = el('div',{class:'run-item'});
+    const d = new Date(run.date);
+    const left = el('div',{},[
+      el('div',{class:'d'},[d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) + ' · ' + fmtDuration(run.durationSec)]),
+      el('div',{class:'km'},[run.km + ' กม.'])
+    ]);
+    item.appendChild(left);
+    item.appendChild(el('div',{class:'pts'},['+' + run.points + ' แต้ม']));
+    c.appendChild(item);
+  });
+  return c;
+}
+
+async function redeem(reward){
+  const available = (state.profile.totalPoints||0) - (state.profile.pointsSpent||0);
+  if(available < reward.points){ showToast('แต้มไม่พอสำหรับรางวัลนี้'); return; }
+  state.profile.pointsSpent = (state.profile.pointsSpent||0) + reward.points;
+  state.profile.redemptions = state.profile.redemptions || [];
+  state.profile.redemptions.unshift({rewardName: reward.name, points: reward.points, date: new Date().toISOString()});
+  try{ await saveProfile(); }catch(e){ console.error('redeem save failed', e); }
+  showToast(`แลก "${reward.name}" สำเร็จ`);
+  render();
+}
+
+function screenRewards(){
+  const c = el('div',{});
+  const available = (state.profile.totalPoints||0) - (state.profile.pointsSpent||0);
+  const banner = el('div',{class:'points-banner'},[
+    el('div',{},[el('div',{class:'p'},[available+'']), el('div',{class:'l'},['แต้มคงเหลือ'])]),
+    el('div',{},[el('div',{class:'p'},[(state.profile.totalKm||0).toFixed(1)]), el('div',{class:'l'},['กม.สะสมทั้งหมด'])]),
+  ]);
+  c.appendChild(banner);
+  c.appendChild(el('h2',{class:'section-title'},['แลกของรางวัล']));
+  state.rewards.forEach(r=>{
+    const card = el('div',{class:'reward-card'});
+    card.appendChild(el('div',{},[
+      el('div',{class:'name'},[r.name]),
+      el('div',{class:'cost'},[r.points + ' แต้ม (~' + (r.points/KM_PER_POINT_RATE).toFixed(1) + ' กม.)'])
+    ]));
+    const btn = el('button',{class:'redeem-btn', onclick: ()=>redeem(r)},['แลก']);
+    if(available < r.points) btn.disabled = true;
+    card.appendChild(btn);
+    c.appendChild(card);
+  });
+
+  c.appendChild(el('div',{class:'admin-toggle', onclick: ()=>{ state.adminOpen = !state.adminOpen; render(); }},[
+    state.adminOpen ? 'ปิดโหมดผู้ดูแล' : 'สำหรับผู้ดูแล: จัดการรายการของรางวัล'
+  ]));
+
+  if(state.adminOpen){
+    const box = el('div',{class:'admin-box'});
+    if(!state.adminUnlocked){
+      const pass = el('input',{placeholder:'รหัสผ่านผู้ดูแล', type:'password'});
+      box.appendChild(pass);
+      box.appendChild(el('button',{onclick:()=>{
+        if(pass.value === 'admin1234'){ state.adminUnlocked = true; render(); }
+        else showToast('รหัสผ่านไม่ถูกต้อง');
+      }},['ปลดล็อก']));
+      box.appendChild(el('div',{class:'hint'},['รหัสเริ่มต้น: admin1234 (แนะนำให้เปลี่ยนก่อนใช้งานจริง โดยแก้ในซอร์สโค้ด)']));
+    }else{
+      const nameInput = el('input',{placeholder:'ชื่อของรางวัล'});
+      const ptsInput = el('input',{placeholder:'จำนวนแต้มที่ใช้แลก', type:'number'});
+      box.appendChild(nameInput);
+      box.appendChild(ptsInput);
+      box.appendChild(el('button',{onclick: async ()=>{
+        const name = nameInput.value.trim();
+        const pts = parseInt(ptsInput.value);
+        if(!name || !pts){ showToast('กรอกข้อมูลให้ครบ'); return; }
+        state.rewards.push({id:'r'+Date.now(), name, points: pts});
+        await saveRewards();
+        showToast('เพิ่มรางวัลแล้ว');
+        render();
+      }},['+ เพิ่มรางวัล']));
+    }
+    c.appendChild(box);
+  }
+
+  return c;
+}
+
+function screenLeaderboard(container, data){
+  container.innerHTML = '';
+  container.appendChild(el('h2',{class:'section-title'},['อันดับสะสมระยะทาง']));
+  if(!data || data.length === 0){
+    container.appendChild(el('div',{class:'empty'},['ยังไม่มีข้อมูลผู้วิ่ง']));
+    return;
+  }
+  data.forEach((p,i)=>{
+    const row = el('div',{class:'lb-row' + (p.id === state.employeeId ? ' me' : '')});
+    row.appendChild(el('div',{class:'rank'},['#'+(i+1)]));
+    row.appendChild(el('div',{class:'nm'},[p.name || 'ไม่ระบุชื่อ']));
+    row.appendChild(el('div',{class:'kmv'},[(p.totalKm||0).toFixed(1)+' กม.']));
+    container.appendChild(row);
+  });
+}
+
+function render(skipTrail){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  if(state.screen === 'loading'){
+    return;
+  }
+
+  if(state.screen === 'login'){
+    app.appendChild(screenLogin());
+    return;
+  }
+
+  const top = el('div',{class:'bib-top'});
+  const brand = el('div',{class:'brand'});
+  brand.appendChild(el('h1',{},['วิ่งสะสมแต้ม']));
+  brand.appendChild(el('div',{class:'who'},['สวัสดี ', el('b',{},[state.employeeName])]));
+  top.appendChild(brand);
+  const bibNum = el('div',{class:'bib-number'},[
+    el('div',{class:'num'},[(state.profile.totalKm||0).toFixed(1), el('span',{},[' กม.'])]),
+    el('div',{class:'label'},['ระยะสะสมทั้งหมด'])
+  ]);
+  top.appendChild(bibNum);
+  app.appendChild(top);
+
+  const main = el('main',{});
+  if(state.screen === 'track') main.appendChild(screenTrack());
+  if(state.screen === 'history') main.appendChild(screenHistory());
+  if(state.screen === 'rewards') main.appendChild(screenRewards());
+  if(state.screen === 'leaderboard'){
+    const holder = el('div',{});
+    main.appendChild(holder);
+    loadLeaderboard().then(data => screenLeaderboard(holder, data));
+  }
+  app.appendChild(main);
+
+  const tabs = el('nav',{class:'tabs'});
+  [
+    ['track','🏃','วิ่ง'],
+    ['history','📋','ประวัติ'],
+    ['rewards','🎁','รางวัล'],
+    ['leaderboard','🏆','อันดับ'],
+  ].forEach(([key,icon,label])=>{
+    tabs.appendChild(el('button',{class: state.screen===key?'active':'', onclick: ()=>{ state.screen = key; render(); }},[
+      el('div',{class:'ic'},[icon]), label
+    ]));
+  });
+  app.appendChild(tabs);
+
+  if(state.toast){
+    app.appendChild(el('div',{class:'toast'},[state.toast]));
+  }
+
+  if(!skipTrail && state.screen === 'track'){
+    requestAnimationFrame(drawTrail);
+  }
+  if(state.screen === 'track'){
+    requestAnimationFrame(drawTrail);
+  }
+}
+
+async function init(){
+  await loadMe();
+  if(state.employeeId){
+    await loadProfile();
+    await loadRuns();
+    await loadRewards();
+    state.screen = 'track';
+  }else{
+    state.screen = 'login';
+  }
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
